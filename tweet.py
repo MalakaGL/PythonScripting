@@ -19,18 +19,27 @@ def log_error(error):
 
 def save_last_tweet_id(connection, tweet_id):
 	last_tweet = {'timestamp':datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'tweet_id':tweet_id}
-	collection = connection.twitter.last_tweet_id
+	collection = connection.twitterdb.last_tweet_id
 	collection.insert(last_tweet)
 
 def read_last_tweet_id(connection):
-	collection = connection.twitter.last_tweet_id
-	tweet = collection.find().sort( [('_id',-1)] )
-	if tweet:
-		tweet_list = list(tweet)
-		if tweet_list and tweet_list[0]['tweet_id']:
-			return tweet_list[0]['tweet_id']
-		else:
-			return 0
+	try:
+		#connect to last_tweet_id collection
+		collection = connection.twitterdb.last_tweet_id
+		#get last tweet ids sorted in descending order
+		tweet = collection.find().sort( [('_id',-1)])
+		#if a result was obtained
+		if tweet:
+			#convert the result to a list
+			tweet_list = list(tweet)
+			#if list is not empty
+			if tweet_list: 
+				return tweet_list[0]['tweet_id']
+			else:
+				return 0
+	except: #pymongo.errors.OperationFailure
+		print "Authentication failure."
+		sys.exit(1)
 
 def get_tweets(connection):
 	url = 'https://api.twitter.com/1.1/search/tweets.json'
@@ -44,33 +53,19 @@ def get_tweets(connection):
 	response = requests.get(url, auth=auth, params=payload)
 	return json.loads(response.text), last_tweet_id
 
-def save_result(connection, text, overall, positive, negative, neutral):
-	tweet = {'timestamp':datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'tweet':text,'overall':overall,'positive':positive,'negative':negative,'neutral':neutral}
-	collection = connection.twitter.tweets
+def save_result(connection, tweet, overall, positive, negative, neutral):
+	tweet = {'timestamp':datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'tweet':tweet,'overall':overall,'positive':positive,'negative':negative,'neutral':neutral}
+	collection = connection.twitterdb.tweets
 	collection.insert(tweet)
 
 def open_db_connection():
-	connection = MongoClient("mongodb://allion:allion123@ds029821.mongolab.com:29821/twitter")
-	return connection
-
-def main():
-	text = ""
-	count = 1
-	connection = open_db_connection()
-	tweets, last_tweet_id = get_tweets(connection)
-	while tweets['statuses']:
-		for tweet in tweets['statuses']:
-			if is_ascii(tweet['text']):
-				print str(count) + "\t: " + tweet['text'] + "\n"
-				count = count + 1
-				text = tweet['text']
-				overall, positive, negative, neutral = analyze(text)
-				save_result(connection, text, overall, positive, negative, neutral)
-			if last_tweet_id < int(tweet['id']):
-				last_tweet_id = int(tweet['id'])
-		save_last_tweet_id(connection, last_tweet_id)
-		tweets, last_tweet_id = get_tweets(connection)
-	connection.close()
+	try:
+		#create a MongoClient object to the given URI
+		connection = MongoClient("mongodb://allion:allion123@ds031271.mongolab.com:31271/twitterdb")
+		return connection
+	except: #pymongo.errors.ConfigurationError
+		print "User name or Password invalid."
+		sys.exit(1)
 
 def is_ascii(text):
 	try:
@@ -82,5 +77,27 @@ def is_ascii(text):
 def analyze(text):
 	result = vaderSentiment(text)
 	return result['compound'], result['pos'], result['neg'], result['neu']
+
+def main():
+	text = ""
+	count = 1
+	#create the MongoClient
+	connection = open_db_connection()
+	tweets, last_tweet_id = get_tweets(connection)
+	while tweets['statuses']:
+		for tweet in tweets['statuses']:
+			text=""
+			for word in tweet['text'].split():
+				if is_ascii(word):
+					text=text+word
+			print str(count) + "\t: " + tweet['text'] + "\n"
+			count = count + 1
+			overall, positive, negative, neutral = analyze(text)
+			save_result(connection, tweet, overall, positive, negative, neutral)
+			if last_tweet_id < int(tweet['id']):
+				last_tweet_id = int(tweet['id'])
+		save_last_tweet_id(connection, last_tweet_id)
+		tweets, last_tweet_id = get_tweets(connection)
+	connection.close()
 
 main()

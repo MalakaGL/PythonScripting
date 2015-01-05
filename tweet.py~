@@ -1,0 +1,15 @@
+#!/bin/env python
+import requests
+from requests_oauthlib import OAuth1
+
+CONSUMER_KEY = "D1847mqj9wX1r0Dz0LJgVouG2"
+CONSUMER_SECRET = "ZnAAJupzllq5nawLG2lekSSAPOzqcSNiGdykIZTVKaz7efYzPr"
+ACCESS_KEY = "2289227376-fYVHTyoLIbtYs3eCMRseUiwrN0zTfJhv7k3UhUR"
+ACCESS_SECRET = "J96DyJjSAcqPxK1AGZMtEcA9VzGZgl9jKd3p0SOR6NEDQ"
+#?q=%23PresPollSL&result_type=recent
+url = 'https://api.twitter.com/1.1/search/tweets.json'
+auth = OAuth1(CONSUMER_KEY, CONSUMER_SECRET, ACCESS_KEY, ACCESS_SECRET)
+
+payload = {'q': '#PresPollSL', 'result_type': 'recent'}
+response = requests.get(url, auth=auth, payload)
+print response
