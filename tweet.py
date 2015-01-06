@@ -54,7 +54,7 @@ def get_tweets(connection):
 	return json.loads(response.text), last_tweet_id
 
 def save_result(connection, tweet, overall, positive, negative, neutral):
-	tweet = {'timestamp':datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'tweet':tweet,'overall':overall,'positive':positive,'negative':negative,'neutral':neutral}
+	tweet = {'overall':overall,'positive':positive,'negative':negative,'neutral':neutral,'timestamp':datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'tweet':tweet}
 	collection = connection.twitterdb.tweets
 	collection.insert(tweet)
 
